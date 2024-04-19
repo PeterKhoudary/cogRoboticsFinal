@@ -1,0 +1,128 @@
+from cozmo_fsm import *
+
+import os
+import numpy as np
+import cv2
+import base64
+import openai
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+preamble = """
+Imagine you are a robot navigating through terrain. 
+If you see what appears to be a cube with some insignia on it,
+the cube is 45 mm on a side. You might think these
+cubes are themselves robots, but you can be assured they are merely stylized cubes.
+If you are asked to provide dimesional information (width, height) about your surroundings,
+just give your best guess, even if you think it is inaccurate.
+Note that if the size / appearance of objects in your view appears to change, it is because 
+the robot moved, and not that your environment changed. You will be asked to estimate
+distances / heights / widths of these objects, and distance may be relative to your new position.
+"""
+
+runningHistory = [{"role": "system", "content": preamble}]
+
+userInput = ""
+
+
+class GetImage(StateNode):
+    def start(self, event=None):
+        super().start(event)
+        global userInput
+        userInput = event.string
+        img = np.array(self.robot.world.latest_image.raw_image)
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 95]
+        result, encimg = cv2.imencode('.jpg', img, encode_param)
+        jpeg_string = base64.b64encode(encimg).decode('utf-8')
+        self.post_data(jpeg_string)
+
+class RunQuery(StateNode):
+    def start(self,event):
+        super().start(event)
+
+        global runningHistory
+        global userInput
+
+        jpeg_string = event.data
+
+        response = self.parent.client.chat.completions.create(
+            model="gpt-4-vision-preview",
+            messages = runningHistory + [
+            {"role": "user", "content": [
+                { "type": "text",
+                  "text": userInput
+                },
+                { "type": "image_url",
+                  "image_url": { "url" : f"data:image/jpeg;base64,{jpeg_string}"}
+                }
+                ]
+            }]
+        )
+        # print(response.choices[0].message.content)
+        for choice in response.choices:
+            # remove LaTeX brackets from response
+            cleaned_response = re.sub(r'\\[\[\]\(\)]', '', choice.message.content)
+            print(cleaned_response)
+        
+        runningHistory += [{"role": "user", "content": [
+                              { "type": "text",
+                                "text": userInput
+                              },
+                              { "type": "image_url",
+                                "image_url": { "url" : f"data:image/jpeg;base64,{jpeg_string}"}
+                              }
+                            ]},
+
+                          {"role": "assistant", "content": cleaned_response}
+                          ]
+        print()
+        self.post_completion()
+
+
+class DemoFinal(StateMachineProgram):
+    def start(self):
+        super().start()
+        self.client = openai.OpenAI()
+ 
+    $setup{
+        # Allow time for color vision to kick in
+        ColorImageEnabled() =T(1)=> wait
+
+        wait: Print("Enter 'tm' followed by a question for cozmo") =TM=> get_image
+
+        get_image: GetImage() =D=> RunQuery() =C=> wait
+        }
+        # print(response.choices[0].message.content)
+        for choice in response.choices:
+            # remove LaTeX brackets from response
+            cleaned_response = re.sub(r'\\[\[\]\(\)]', '', choice.message.content)
+            print(cleaned_response)
+        
+        runningHistory += [{"role": "user", "content": [
+                              { "type": "text",
+                                "text": userInput
+                              },
+                              { "type": "image_url",
+                                "image_url": { "url" : f"data:image/jpeg;base64,{jpeg_string}"}
+                              }
+                            ]},
+
+                          {"role": "assistant", "content": cleaned_response}
+                          ]
+        print()
+        self.post_completion()
+
+
+class DemoFinal(StateMachineProgram):
+    def start(self):
+        super().start()
+        self.client = openai.OpenAI()
+ 
+    $setup{
+        # Allow time for color vision to kick in
+        SetHeadAngle(0) =T(1)=> wait
+
+        wait: Print("Enter 'tm' followed by a question for cozmo") =TM=> get_image
+
+        get_image: GetImage() =D=> RunQuery() =C=> wait
+        }
