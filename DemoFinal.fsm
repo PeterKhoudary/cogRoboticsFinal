@@ -210,10 +210,12 @@ class DemoFinal(StateMachineProgram):
         self.client = openai.OpenAI()
  
     $setup{
-        # Allow time for color vision to kick in
-        ColorImageEnabled() =T(1)=> wait
+        # Flatten head out and give time for color vision to kickin
+        launcher: SetHeadAngle(0) =C=> ColorImageEnabled() =T(1)=> wait
 
-        wait: Print("Enter 'tm' followed by a question for cozmo") =TM=> get_image
+        wait: Print("Enter 'tm' followed by a question for cozmo") 
+        wait =TM=> get_image
 
-        get_image: GetImage() =D=> RunQuery() =C=> wait
+        get_image: GetImage() =D=> RunQuery() 
+        get_image =C=> wait
         }
