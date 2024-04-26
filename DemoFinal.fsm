@@ -85,7 +85,8 @@ Make sure your grid is representative of your current knowledge base:
 0mm                                                  260.44mm
 
 
-This is an example of what your output should be drawn like when asked for a path that brings you in front of the obstacle. Make sure it is representative of your current knowledge base:
+This is an example of what your output should be drawn like when asked for a path that brings you in front of the obstacle. 
+Make sure it is representative of your current knowledge base:
 
 1. Rotate 0 degrees and drive straight for approximately 230mm. (This brings the robot closer to cube3 but with enough space to initiate a turn.)
 2. Rotate -90 degrees, to turn to the right (clockwise).
