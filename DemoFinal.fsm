@@ -22,9 +22,12 @@ form of a Python list.
 
 If you are asked to provide an estimation or provide a path, give your best estimation.
 Even if you don't know, or feel that you are unqualified to provide one, under no circumstances
-should you not provide a numerical estimation or a path. These paths might require you to drive around
-or in between two objects. When driving around objects, note that you'll need to account for the depth of the object, and the length of the robot.
-The robot is 100 mm long and 60 cm wide.
+should you not provide a numerical estimation or a path. The only time you should not provide a path, when asked
+for one, is if your estimations deem that the path is impossible. That is, there's no way to navigate a path
+that satisfies the request. These paths might require you to drive around
+or in between two objects. When driving around or behind objects, note that you'll need to account for the depth of the object, and the depth / length of the robot.
+If you don't know the length of an object, you can assume that is it the same as the object's width.
+The robot is 100 mm long / deep and 60 cm wide.
 
 If you see what appears to be a cube with some insignia on it,
 the cube is 45 mm on a side. You might think these
@@ -37,7 +40,7 @@ When making these estimations, especially on the width or distance of an object,
 it may be useful to use the bottom edge of the cube.
 In the coordinate system we use, the x axis is forward, y is left, and z is up.
 So if object "A" appears to be in front of object "B" in your view, then "A" be closer to you than object "B".
-You are driving on a flat surface.
+You are driving on a flat surface. 
 
 Note that if the size / appearance of objects in your view appears to change, it is because 
 the robot moved, and not that your environment changed. Your environment will never change, so the positions
@@ -57,37 +60,37 @@ If you have an estimate for the width and depth of an object, you must draw it i
 If you are asked to provide a path, you must draw the path on the top down view grid you provide.
 Assume all units are millimeters.
 
-A normal grid view should be drawn like this as an example. Make sure your grid is representative of your current knowledge base:
+A normal grid view should be drawn like this as an example. Imagine in the image you're shown,
+you see the cube, and some distance to the right of it, another obstacle. Then your grid should look like this.
+Make sure your grid is representative of your current knowledge base:
 +----------------------------------------------------+
 |                                                    |
 |                                                    |
-|                             90mm                   |
+|                                                    |
 |        [ ]        +---------------------+          |
-|     [cube3]       |       Cylinder       |         |
+|     [cube3]       |       obstacle      |          |
 |        45mm       +---------------------+          |
-|                    <----- diameter ----->          |
+|                    <----- diameter ----->          | 
+|                                                    | 
 |                                                    |
 |                                                    |
-|                                                    |
-|   +------R-------+                                 |
-|   |              |                                 |
-|   |   Robot      |                                 |
-|   |              |                                 |
-|   +--------------+                                 |
+|   +---R----+                                       |
+|   |        |                                       |
+|   | Robot  |                                       |
+|   |        |                                       |
+|   +--------+                                       |
 |                                                    |
 |                                       100.94mm     |
 +----------------------------------------------------+
 0mm                                                  260.44mm
-(On the x-axis for both cube3 and the cylindrical object)
 
-This is an example of what your output and grid view should be drawn like when asked for a path. Make sure your grid is 
-representative of your current knowledge base:
+
+This is an example of what your output should be drawn like when asked for a path that brings you in front of the obstacle. Make sure it is representative of your current knowledge base:
 
 1. Rotate 0 degrees and drive straight for approximately 230mm. (This brings the robot closer to cube3 but with enough space to initiate a turn.)
-2. Rotate 90 degrees to the left (anticlockwise).
+2. Rotate -90 degrees, to turn to the right (clockwise).
 3. Drive straight for approximately 80mm to pass cube3 while maintaining safe clearance.
-4. Rotate 90 degrees to the right (clockwise) to align with the gap between cube3 and the cylinder.
-5. Drive straight for approximately 150mm to safely pass between cube3 and the cylinder.
+4. Rotate 90 degrees to the left (anticlockwise) to face the obstacle.
 
 Here's a Python list representation of the path:
 
@@ -95,33 +98,11 @@ Here's a Python list representation of the path:
 path = [
     ("rotate", 0),
     ("drive", 230),
-    ("rotate", 90),
-    ("drive", 80),
     ("rotate", -90),
-    ("drive", 150)
+    ("drive", 80),
+    ("rotate", 90)
 ]
 ```
-
-Now, let's depict this path on the top-down 2D grid:
-
-+----------------------------------------------------+
-|                                                    |
-|                                350mm               |
-|                        +----------+   +------+     |
-|                        |          |   |      |     |
-|                        |  cube3   |   |Cylinder|   |
-|                        |          |   |      |     |
-|   230mm               +----------+   +------+      |
-|   +-----------------> |                            |
-|   +------R-------+    V                            |
-|   |              |    80mm                         |
-|   |   Robot      |   +----------------->           |
-|   |              |                                 |
-|   +--------------+                                 |
-|                                                    |
-|                                                    |
-+----------------------------------------------------+
-0mm                                                  500mm
 
 [The robot's path is an approximation and should be adjusted based on real-time feedback and precise measurements.]
 """
@@ -214,8 +195,13 @@ class DemoFinal(StateMachineProgram):
         launcher: SetHeadAngle(0) =C=> ColorImageEnabled() =T(1)=> wait
 
         wait: Print("Enter 'tm' followed by a question for cozmo") 
+        wait =TM("run")=> Print("Running") =C=> wait
+
         wait =TM=> get_image
 
-        get_image: GetImage() =D=> RunQuery() 
-        get_image =C=> wait
+        get_image: GetImage()
+        get_image =D=> askChat
+
+        askChat: RunQuery() 
+        askChat =C=> wait 
         }
