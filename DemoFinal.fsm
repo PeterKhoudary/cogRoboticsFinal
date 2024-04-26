@@ -95,13 +95,7 @@ This is an example of what your output should be drawn like when asked for a pat
 Here's a Python list representation of the path:
 
 ```python
-path = [
-    ("rotate", 0),
-    ("drive", 230),
-    ("rotate", -90),
-    ("drive", 80),
-    ("rotate", 90)
-]
+[("rotate", 0), ("drive", 230), ("rotate", -90), ("drive", 80), ("rotate", 90)]
 ```
 
 [The robot's path is an approximation and should be adjusted based on real-time feedback and precise measurements.]
@@ -110,6 +104,8 @@ path = [
 runningHistory = [{"role": "system", "content": preamble}]
 
 userInput = ""
+
+currPath = []
 
 class GetImage(StateNode):
     def start(self, event=None):
@@ -182,6 +178,16 @@ class RunQuery(StateNode):
 
                           {"role": "assistant", "content": cleaned_response}
                           ]
+
+        # get the path if one exists
+        #listStart = cleaned_response.find("```")
+        #print(f"index where string starts = {listStart}")
+        #restOfString = cleaned_response[listStart + len("```python"):]
+        #print(restOfString) 
+        #listEnd = restOfString
+        #actualList = restOfString
+        #print(restOfString)
+        
         print()
         self.post_completion()
 
