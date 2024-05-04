@@ -1,5 +1,6 @@
 from cozmo_fsm import *
 
+import math
 import os
 import numpy as np
 import cv2
@@ -69,7 +70,7 @@ Make sure your grid is representative of your current knowledge base:
 |                                                    |
 |        [ ]        +---------------------+          |
 |     [cube3]       |       obstacle      |          |
-|        45mm       +---------------------+          |
+|        45mm       +---------------------+          |.
 |                    <----- diameter ----->          | 
 |                                                    | 
 |                                                    |
@@ -82,7 +83,7 @@ Make sure your grid is representative of your current knowledge base:
 |                                                    |
 |                                       100.94mm     |
 +----------------------------------------------------+
-0mm                                                  260.44mm
+0mm                                                  260.44mm.
 
 
 This is an example of what your output should be drawn like when asked for a path that brings you in front of the obstacle. 
@@ -107,6 +108,28 @@ runningHistory = [{"role": "system", "content": preamble}]
 userInput = ""
 
 currPath = []
+
+class GetDrive(StateNode):
+  def start(self, event = None):
+    super().start(event)
+    global currPath
+    if currPath == []:
+      self.post_failure()
+    else:
+      (idea, driveDistance) = currPath[0]
+      currPath = currPath[1:]
+      self.post_data(distance_mm(driveDistance))
+
+class GetTurn(StateNode):
+  def start(self, event = None):
+    super().start(event)
+    global currPath
+    if currPath == []:
+      self.post_failure()
+    else:
+      (idea, turnAngle) = currPath[0]
+      currPath = currPath[1:]
+      self.post_data(Angle(math.radians(turnAngle)))
 
 class GetImage(StateNode):
     def start(self, event=None):
@@ -167,6 +190,7 @@ class RunQuery(StateNode):
             # remove LaTeX brackets from response
             cleaned_response = re.sub(r'\\[\[\]\(\)]', '', choice.message.content)
             print(cleaned_response)
+        print()
         
         runningHistory += [{"role": "user", "content": [
                               { "type": "text",
@@ -181,15 +205,19 @@ class RunQuery(StateNode):
                           ]
 
         # get the path if one exists
-        #listStart = cleaned_response.find("```")
+        listStart = cleaned_response.find("```python")
         #print(f"index where string starts = {listStart}")
-        #restOfString = cleaned_response[listStart + len("```python"):]
+        restOfString = cleaned_response[listStart + len("```python"):]
         #print(restOfString) 
-        #listEnd = restOfString
-        #actualList = restOfString
-        #print(restOfString)
+        listEnd = restOfString.find("]")
+        pathListString = (restOfString[:listEnd + 1]).strip()
+        # print(eval(pathListString))
+
+        if not (listStart == -1 or listEnd == -1):
+          print(pathListString)
+          global currPath
+          currPath = eval(pathListString)
         
-        print()
         self.post_completion()
 
 class DemoFinal(StateMachineProgram):
@@ -201,14 +229,21 @@ class DemoFinal(StateMachineProgram):
         # Flatten head out and give time for color vision to kickin
         launcher: SetHeadAngle(0) =C=> ColorImageEnabled() =T(1)=> wait
 
-        wait: Print("Enter 'tm' followed by a question for cozmo") 
-        wait =TM("run")=> Print("Running") =C=> wait
-
+        wait: Print("Enter 'tm' followed by a question for cozmo")
+        wait =TM("run path")=> path_rotate
         wait =TM=> get_image
+
+        path_rotate: GetTurn()
+        path_rotate =D=> Turn() =C=> path_drive
+        path_rotate =F=> wait
+
+        path_drive: GetDrive()
+        path_drive =D=> DriveForward() =C=> path_rotate
+        path_drive =F=> wait
 
         get_image: GetImage()
         get_image =D=> askChat
 
         askChat: RunQuery() 
-        askChat =C=> wait 
+        askChat =C=> wait
         }
