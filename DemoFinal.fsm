@@ -204,17 +204,15 @@ class RunQuery(StateNode):
                           {"role": "assistant", "content": cleaned_response}
                           ]
 
-        # get the path if one exists
+        # slices off everything before the path, if it exists
         listStart = cleaned_response.find("```python")
-        #print(f"index where string starts = {listStart}")
         restOfString = cleaned_response[listStart + len("```python"):]
-        #print(restOfString) 
+        # slice off rest of path
         listEnd = restOfString.find("]")
         pathListString = (restOfString[:listEnd + 1]).strip()
-        # print(eval(pathListString))
 
+        # These are only -1 if there wasn't a path given
         if not (listStart == -1 or listEnd == -1):
-          print(pathListString)
           global currPath
           currPath = eval(pathListString)
         
